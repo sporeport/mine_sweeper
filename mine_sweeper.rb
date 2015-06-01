@@ -37,7 +37,7 @@ class Game
       end
     end
     @board.display_board
-    won? ? puts("YOU WINN!!!") : puts("Sorry try again")
+    won? ? puts("YOU WINN!!!") : puts("Sorry you are a loser.")
 
     nil
   end
