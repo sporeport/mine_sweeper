@@ -2,27 +2,40 @@ require 'yaml'
 
 
 class Game
-  def self.load_game(game)
-    YAML.load(game).play
-  end
 
   attr_accessor :board
-  def initialize()
-    @board = Board.new
+  def initialize
+    setup_game
+  end
+
+  def setup_game
+    if new_or_load == :L
+      print "Game name: "
+      game_name = gets.chomp
+      game_state = File.read(game_name)
+      @board = YAML.load(game_state)
+    else
+      @board = Board.new
+    end
+    play
+    nil
   end
 
   def play
     until won? || lost?
       @board.display_board
-      move_type = get_move_type
-      unless move_type == :S
-        player_move = get_move
-        @board.update_board(player_move, move_type)
-      else
+
+      option = get_option
+      if option == :S
         save_game
+      elsif option == :Q
+        puts "Thanks for playing\nGoodbye!"
+        return nil
+      else
+        player_move = get_move
+        @board.update_board(player_move, option)
       end
     end
-
     @board.display_board
     won? ? puts("YOU WINN!!!") : puts("Sorry try again")
 
@@ -53,27 +66,41 @@ class Game
     move
   end
 
-  def get_move_type
-    move_type = nil
+  def get_option
+    option = nil
+
     loop do
-      print "R: Reveal -- F: Flag -- S: Save \n"
+      print "R -> Reveal : F -> Flag : S -> Save : Q -> Quit\n"
       ## print "Flag or Reveal (F/R):  "
-      move_type = gets.chomp.upcase.to_sym
-      break if [:R, :F, :S].include?(move_type)
-      print "Please type R, F, or S"
+      option = gets.chomp.upcase.to_sym
+      break if [:R, :F, :S, :Q].include?(option)
+      print "Please type R, F, S, or Q\n"
     end
 
-    move_type
+    option
   end
 
   def save_game
     print "Save as: "
     save_name = gets.chomp
-    game_state = self.to_yaml
+    game_state = self.board.to_yaml
     File.open(save_name, "w") do |f|
       f.puts game_state
     end
   end
+
+  def new_or_load
+    option = nil
+    loop do
+      print "N -> New game : L -> Load game\n"
+      option = gets.chomp.upcase.to_sym
+      break if [:N, :L].include?(option)
+      print "Please type N, L\n"
+    end
+
+    option
+  end
+
 end
 
 class Board
@@ -224,7 +251,6 @@ end
 
 
 game = Game.new
-game.play
 
 
 
