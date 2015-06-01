@@ -17,7 +17,7 @@ class Game
     else
       @board = Board.new
     end
-    play
+
     nil
   end
 
@@ -71,7 +71,6 @@ class Game
 
     loop do
       print "R -> Reveal : F -> Flag : S -> Save : Q -> Quit\n"
-      ## print "Flag or Reveal (F/R):  "
       option = gets.chomp.upcase.to_sym
       break if [:R, :F, :S, :Q].include?(option)
       print "Please type R, F, S, or Q\n"
@@ -123,9 +122,12 @@ class Board
   attr_accessor :grid, :all_cells
   def initialize
     @grid = Array.new(BOARD_SIZE) { Array.new(BOARD_SIZE) { Cell.new } }
-    @all_cells = @grid.flatten
     init_neighbors
     init_values
+  end
+
+  def all_cells
+    @grid.flatten
   end
 
   def init_neighbors
@@ -135,7 +137,6 @@ class Board
           rel_row, rel_col = idx1 + neighbor[0], idx2 + neighbor[1]
 
           if Board.within_bounds([rel_row, rel_col])
-            # (0..8).to_a.include?(rel_row) && (0..8).to_a.include?(rel_col)
             cell.neighbors << @grid[rel_row][rel_col]
           end
         end
@@ -146,7 +147,7 @@ class Board
   end
 
   def init_values
-    @all_cells.each do |cell|
+    all_cells.each do |cell|
       cell.neighbors.each do |neighbor|
         cell.value += 1 if neighbor.bomb?
       end
@@ -194,11 +195,11 @@ class Board
   end
 
   def winning_board?
-    @all_cells.all? { |cell| cell.revealed? || cell.flagged? }
+    all_cells.all? { |cell| cell.revealed? || cell.flagged? }
   end
 
   def losing_board?
-    @all_cells.any? { |cell| cell.revealed? && cell.bomb? }
+    all_cells.any? { |cell| cell.revealed? && cell.bomb? }
   end
 
 end
@@ -250,7 +251,7 @@ class Cell
 end
 
 
-game = Game.new
+game = Game.new.play
 
 
 
