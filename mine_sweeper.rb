@@ -1,5 +1,5 @@
 require 'yaml'
-
+require 'colorize'
 
 class Game
 
@@ -170,20 +170,21 @@ class Board
   end
 
   def display_board
+
     print "    "
-    (0..8).each { |i| print "#{i.to_s} " }
+    (0..8).each { |i| print "#{i.to_s} ".colorize(:light_black) }
     print "\n\n"
     @grid.each_with_index do |row, idx1|
-      print "#{idx1.to_s}   "
+      print "#{idx1.to_s}   ".colorize(:light_black)
       row.each_with_index do |cell, idx2|
         if cell.revealed?
           if cell.bomb?
-            print "X"
+            print "✹".colorize(color: :red)
           else
-            cell.value > 0 ? print(cell.value.to_s) : print("_")
+            cprint(cell.value.to_s)
           end
         else
-          cell.flagged? ? print("F") : print("*")
+          cell.flagged? ? print("⚑".colorize(:red)) : print("▢")
         end
         print " "
       end
@@ -192,6 +193,22 @@ class Board
     print "\n"
 
     nil
+  end
+
+  def cprint(str)
+    if str == "1"
+      print str.colorize(:blue)
+    elsif str == "2"
+      print str.colorize(:green)
+    elsif str == "3"
+      print str.colorize(:cyan)
+    elsif str == "4"
+      print str.colorize(:magenta)
+    elsif str == "0"
+      print "▢".colorize(:white)
+    else
+      print str
+    end
   end
 
   def winning_board?
