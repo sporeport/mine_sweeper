@@ -27,6 +27,8 @@ class Game
 
     @board.display_board
     won? ? puts("YOU WINN!!!") : puts("Sorry try again")
+
+    nil
   end
 
   def lost?
@@ -38,14 +40,16 @@ class Game
   end
 
   def get_move
+    move = []
+
     loop do
-      move = []
       print "Row:  "
       move << gets.chomp.to_i
       print "Col:  "
       move << gets.chomp.to_i
       break if move.all? { |m| (0..8).to_a.include?(m) }
       puts "please use numbers between 0 and 8"
+      move.clear
     end
 
     move
@@ -78,7 +82,7 @@ class Board
 
   attr_accessor :grid
   def initialize
-    @grid = Array.new(BOARD_SIZE) { Array.new(BOARD_SIZE, Cell.new) }
+    @grid = Array.new(BOARD_SIZE) { Array.new(BOARD_SIZE) { Cell.new } }
     init_neighbors
     init_values
   end
@@ -118,19 +122,27 @@ class Board
     if move_type == :R
       @grid[row][col].reveal
     else
-      @grid[row][col].flagged = true
+      @grid[row][col].flag
     end
 
     nil
   end
 
   def display_board
-    @grid.each do |row|
-      row.each do |cell|
-        if cell.revealed
-          cell.value > 0 ? print(cell.value) : print("_")
+    print "  "
+    (0..8).each {|i| print "#{i.to_s} "}
+    print "\n"
+    @grid.each_with_index do |row, idx1|
+      print "#{idx1.to_s} "
+      row.each_with_index do |cell, idx2|
+        if cell.revealed?
+          if cell.bomb
+            print "X"
+          else
+            cell.value > 0 ? print(cell.value.to_s) : print("_")
+          end
         else
-          if cell.flagged
+          if cell.flagged?
             print "F"
           else
             print "*"
@@ -146,13 +158,13 @@ class Board
 
   def winning_board?
     @grid.all? do |row|
-      row.all? { |cell| cell.revealed || cell.flagged }
+      row.all? { |cell| cell.revealed? || cell.flagged? }
     end
   end
 
   def losing_board?
     @grid.any? do |row|
-      row.any? { |cell| cell.revealed && cell.bomb }
+      row.any? { |cell| cell.revealed? && cell.bomb }
     end
   end
 
@@ -160,7 +172,7 @@ end
 
 
 class Cell
-  attr_accessor :value, :bomb, :neighbors, :flagged, :revealed
+  attr_accessor :value, :bomb, :neighbors
 
   def initialize
     @value = 0
@@ -170,17 +182,27 @@ class Cell
     @neighbors = []
   end
 
+  def flagged?
+    @flagged
+  end
 
+  def revealed?
+    @revealed
+  end
+
+  def flag
+    @flag = true
+  end
 
   def set_bomb?
-    rand(7) == 0
+    rand(10) == 0
   end
 
   def reveal
-    @revealed == true
+    @revealed = true
     unless @bomb == true || @value > 0
       @neighbors.each do |neighbor|
-        neighbor.reveal
+        neighbor.reveal unless neighbor.revealed?
       end
     end
 
