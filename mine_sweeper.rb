@@ -1,12 +1,7 @@
-require 'byebug'
+require 'yaml'
 
 
 class Game
-
-  def self.new_game
-    Game.new
-  end
-
   def self.load_game(game)
     YAML.load(game).play
   end
@@ -14,15 +9,18 @@ class Game
   attr_accessor :board
   def initialize()
     @board = Board.new
-    play
   end
 
   def play
     until won? || lost?
       @board.display_board
       move_type = get_move_type
-      player_move = get_move ##ex. [0, 0]
-      @board.update_board(player_move, move_type)
+      unless move_type == :S
+        player_move = get_move
+        @board.update_board(player_move, move_type)
+      else
+        save_game
+      end
     end
 
     @board.display_board
@@ -47,7 +45,7 @@ class Game
       move << gets.chomp.to_i
       print "Col:  "
       move << gets.chomp.to_i
-      break if move.all? { |m| (0..8).to_a.include?(m) }
+      break if Board.within_bounds(move)
       puts "please use numbers between 0 and 8"
       move.clear
     end
@@ -58,12 +56,23 @@ class Game
   def get_move_type
     move_type = nil
     loop do
-      print "Flag or Reveal (F/R):  "
+      print "R: Reveal -- F: Flag -- S: Save \n"
+      ## print "Flag or Reveal (F/R):  "
       move_type = gets.chomp.upcase.to_sym
-      break if move_type == :F || move_type == :R
+      break if [:R, :F, :S].include?(move_type)
+      print "Please type R, F, or S"
     end
 
     move_type
+  end
+
+  def save_game
+    print "Save as: "
+    save_name = gets.chomp
+    game_state = self.to_yaml
+    File.open(save_name, "w") do |f|
+      f.puts game_state
+    end
   end
 end
 
@@ -80,9 +89,14 @@ class Board
     [-1, 1]
   ]
 
-  attr_accessor :grid
+  def self.within_bounds(row_col) ##ex [0, 2]
+    row_col.all? { |m| (0...BOARD_SIZE).to_a.include?(m) }
+  end
+
+  attr_accessor :grid, :all_cells
   def initialize
     @grid = Array.new(BOARD_SIZE) { Array.new(BOARD_SIZE) { Cell.new } }
+    @all_cells = @grid.flatten
     init_neighbors
     init_values
   end
@@ -91,9 +105,10 @@ class Board
     @grid.each_with_index do |row, idx1|
       row.each_with_index do |cell, idx2|
         NEIGHBORS.each do |neighbor|
-          rel_row = idx1 + neighbor[0]
-          rel_col = idx2 + neighbor[1]
-          if (0..8).to_a.include?(rel_row) && (0..8).to_a.include?(rel_col)
+          rel_row, rel_col = idx1 + neighbor[0], idx2 + neighbor[1]
+
+          if Board.within_bounds([rel_row, rel_col])
+            # (0..8).to_a.include?(rel_row) && (0..8).to_a.include?(rel_col)
             cell.neighbors << @grid[rel_row][rel_col]
           end
         end
@@ -104,11 +119,9 @@ class Board
   end
 
   def init_values
-    @grid.each do |row|
-      row.each do |cell|
-        cell.neighbors.each do |neighbor|
-          cell.value += 1 if neighbor.bomb == true
-        end
+    @all_cells.each do |cell|
+      cell.neighbors.each do |neighbor|
+        cell.value += 1 if neighbor.bomb?
       end
     end
 
@@ -116,12 +129,12 @@ class Board
   end
 
   def update_board(move, move_type)
-    row = move[0]
-    col = move[1]
+    row, col = move[0], move[1]
 
-    if move_type == :R
+    case move_type
+    when :R
       @grid[row][col].reveal
-    else
+    when :F
       @grid[row][col].flag
     end
 
@@ -129,50 +142,43 @@ class Board
   end
 
   def display_board
-    print "  "
-    (0..8).each {|i| print "#{i.to_s} "}
-    print "\n"
+    print "    "
+    (0..8).each { |i| print "#{i.to_s} " }
+    print "\n\n"
     @grid.each_with_index do |row, idx1|
-      print "#{idx1.to_s} "
+      print "#{idx1.to_s}   "
       row.each_with_index do |cell, idx2|
         if cell.revealed?
-          if cell.bomb
+          if cell.bomb?
             print "X"
           else
             cell.value > 0 ? print(cell.value.to_s) : print("_")
           end
         else
-          if cell.flagged?
-            print "F"
-          else
-            print "*"
-          end
+          cell.flagged? ? print("F") : print("*")
         end
         print " "
       end
       print "\n"
     end
+    print "\n"
 
     nil
   end
 
   def winning_board?
-    @grid.all? do |row|
-      row.all? { |cell| cell.revealed? || cell.flagged? }
-    end
+    @all_cells.all? { |cell| cell.revealed? || cell.flagged? }
   end
 
   def losing_board?
-    @grid.any? do |row|
-      row.any? { |cell| cell.revealed? && cell.bomb }
-    end
+    @all_cells.any? { |cell| cell.revealed? && cell.bomb? }
   end
 
 end
 
 
 class Cell
-  attr_accessor :value, :bomb, :neighbors
+  attr_accessor :value, :neighbors
 
   def initialize
     @value = 0
@@ -190,8 +196,12 @@ class Cell
     @revealed
   end
 
+  def bomb?
+    @bomb
+  end
+
   def flag
-    @flag = true
+    @flagged = true
   end
 
   def set_bomb?
@@ -200,6 +210,7 @@ class Cell
 
   def reveal
     @revealed = true
+
     unless @bomb == true || @value > 0
       @neighbors.each do |neighbor|
         neighbor.reveal unless neighbor.revealed?
@@ -212,7 +223,8 @@ class Cell
 end
 
 
-
+game = Game.new
+game.play
 
 
 
